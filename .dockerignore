@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+storage
+.git
+.env
+.env.local
+*.md
+tests
+scripts
+eslint.config.js
+vitest.config.ts
+.cursor
