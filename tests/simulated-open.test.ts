@@ -3,7 +3,8 @@ import { AddressInfo } from "node:net";
 import { createHttpServer } from "../src/server/http.js";
 import { runMonitor } from "../src/engine/runner.js";
 import { isClosedStatus, type MonitorSnapshot } from "../src/monitors/types.js";
-import { buildEmailBody, buildEmailSubject, buildTelegramMessage } from "../src/notifications/types.js";
+import { buildEmailSubject, buildEmailText, emailIdentityFromConfig } from "../src/notifications/emailTemplate.js";
+import { buildTelegramMessage } from "../src/notifications/types.js";
 import { buildSimulatedOpenPayload, sendTestNotifications } from "../src/notifications/testSend.js";
 import { createTestPool, recordingChannels, testConfig } from "./helpers/testDb.js";
 
@@ -52,12 +53,13 @@ describe("simulated OPEN notifications", () => {
     expect(telegram).toContain("Europe/Copenhagen");
     expect(telegram).toContain("https://www.findbolig.nu/da-dk/udlejere");
     expect(telegram).toContain("⚠️ TEST ONLY — Findbolig did not actually change.");
-    expect(buildEmailSubject(payload)).toBe("🧪 TEST — Findbolig OPEN — Fuglevænget");
-    const email = buildEmailBody(payload);
+    expect(buildEmailSubject(payload)).toBe("Moderavia Monitoring test — Findbolig status notification");
+    const email = buildEmailText(payload, emailIdentityFromConfig(testConfig()));
     expect(email).toContain("Housing fund: Fuglevænget");
     expect(email).toContain("Previous status: Lukket");
-    expect(email).toContain("New status: Åben");
-    expect(email).toContain("simulation");
+    expect(email).toContain("Current status: Åben");
+    expect(email).toContain("This is a system test. No actual Findbolig status change occurred.");
+    expect(email).not.toContain("TEST — Findbolig OPEN");
   });
 
   it("does not mutate housing fund state, history, pending alerts, or monitor runs", async () => {

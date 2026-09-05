@@ -69,12 +69,17 @@ Copy names from `.env.example`. Do not put real secrets in git.
 | `TIMEZONE` | Default `Europe/Copenhagen` |
 | `MONITOR_FAILURE_ALERT_THRESHOLD` | Default `3` consecutive failures before an operational alert |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Primary alerts |
-| `SMTP_HOST` `SMTP_PORT` `SMTP_SECURE` `SMTP_TLS_SERVERNAME` `SMTP_USER` `SMTP_PASSWORD` `EMAIL_FROM` `ALERT_EMAIL` | Email. `SMTP_HOST` must be a bare hostname (no quotes, spaces, `smtp://`, or `:465`). |
+| `SMTP_HOST` `SMTP_PORT` `SMTP_SECURE` `SMTP_TLS_SERVERNAME` `SMTP_USER` `SMTP_PASSWORD` | SMTP. `SMTP_HOST` must be a bare hostname (no quotes, spaces, `smtp://`, or `:465`). |
+| `EMAIL_FROM` | Envelope/sender address (for example `alerts@moderavia.com`) |
+| `EMAIL_FROM_NAME` | From display name. Default `Moderavia Monitoring` |
+| `EMAIL_REPLY_TO` | Reply-To address. Defaults to `EMAIL_FROM` |
+| `EMAIL_SIGNATURE_NAME` `EMAIL_SIGNATURE_COMPANY` `EMAIL_SIGNATURE_DOMAIN` | Email signature lines (not hard-coded in templates) |
+| `ALERT_EMAIL` | Destination for alert mail |
 | `TEST_NOTIFICATION_TOKEN` | Protects `POST /test-notifications`. Body `{ "type": "open", "housingFund": "Fuglevænget" }` sends a simulated OPEN using the production formatter (no DB writes). Omit `type` for a generic operational ping. |
 | `PLAYWRIGHT_FALLBACK` | Default `true`. Used when HTTP/Cheerio extraction fails |
 | `TLS_REJECT_UNAUTHORIZED` | Default `true`. Do not disable in production |
 
-Secrets (`TELEGRAM_BOT_TOKEN`, `SMTP_PASSWORD`, database credentials) are never printed by `/health`, `/status`, or structured logs.
+Secrets (`TELEGRAM_BOT_TOKEN`, `SMTP_PASSWORD`, `TEST_NOTIFICATION_TOKEN`, database credentials) are never printed by `/health`, `/status`, or structured logs.
 
 ## Railway (Pro) deployment
 
@@ -94,7 +99,12 @@ Secrets (`TELEGRAM_BOT_TOKEN`, `SMTP_PASSWORD`, database credentials) are never 
    - `SMTP_TLS_SERVERNAME` (optional; defaults to sanitized `SMTP_HOST`)
    - `SMTP_USER`
    - `SMTP_PASSWORD`
-   - `EMAIL_FROM`
+   - `EMAIL_FROM=alerts@moderavia.com`
+   - `EMAIL_FROM_NAME=Moderavia Monitoring`
+   - `EMAIL_REPLY_TO=alerts@moderavia.com`
+   - `EMAIL_SIGNATURE_NAME`
+   - `EMAIL_SIGNATURE_COMPANY=Moderavia`
+   - `EMAIL_SIGNATURE_DOMAIN=moderavia.com`
    - `ALERT_EMAIL`
    - `TEST_NOTIFICATION_TOKEN`
    - `PLAYWRIGHT_FALLBACK=true`

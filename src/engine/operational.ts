@@ -34,6 +34,7 @@ export async function handleOperationalState(
       monitorName: input.monitorName,
       targetUrl: input.targetUrl,
       detectedAtFormatted: detected,
+      detectedAt: now,
       extraLines: ["The monitor completed a successful check after repeated failures."]
     };
     if (config.MONITOR_SEND_RECOVERY_ALERT) {
@@ -70,11 +71,12 @@ export async function handleOperationalState(
   }
 
   const payload = {
-    eventType: "OPERATIONAL_FAILURE" as const,
-    monitorName: input.monitorName,
-    targetUrl: input.targetUrl,
-    detectedAtFormatted: detected,
-    extraLines: [
+      eventType: "OPERATIONAL_FAILURE" as const,
+      monitorName: input.monitorName,
+      targetUrl: input.targetUrl,
+      detectedAtFormatted: detected,
+      detectedAt: now,
+      extraLines: [
       `Consecutive failures: ${input.consecutiveFailures}`,
       `Threshold: ${config.MONITOR_FAILURE_ALERT_THRESHOLD}`,
       "Statuses were not changed because parsing/fetching failed."

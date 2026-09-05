@@ -34,7 +34,12 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     SMTP_HOST: "smtp.test",
     SMTP_USER: "user",
     SMTP_PASSWORD: "pass",
-    EMAIL_FROM: "from@example.com",
+    EMAIL_FROM: "alerts@moderavia.com",
+    EMAIL_FROM_NAME: "Moderavia Monitoring",
+    EMAIL_REPLY_TO: "alerts@moderavia.com",
+    EMAIL_SIGNATURE_NAME: "Fayyad Mahmoud",
+    EMAIL_SIGNATURE_COMPANY: "Moderavia",
+    EMAIL_SIGNATURE_DOMAIN: "moderavia.com",
     ALERT_EMAIL: "alert@example.com",
     ...overrides
   };

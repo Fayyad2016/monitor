@@ -25,7 +25,8 @@ function toPayload(row: PendingNotification, timezone: string): NotificationPayl
     housingFund: row.housing_fund,
     previousStatus: row.previous_status,
     currentStatus: row.current_status,
-    detectedAtFormatted: formatTimestamp(row.detected_at, timezone) ?? String(row.detected_at)
+    detectedAtFormatted: formatTimestamp(row.detected_at, timezone) ?? String(row.detected_at),
+    detectedAt: row.detected_at
   };
 }
 

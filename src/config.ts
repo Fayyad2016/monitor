@@ -42,6 +42,11 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+  EMAIL_FROM_NAME: z.string().default("Moderavia Monitoring"),
+  EMAIL_REPLY_TO: z.string().optional(),
+  EMAIL_SIGNATURE_NAME: z.string().default("Fayyad Mahmoud"),
+  EMAIL_SIGNATURE_COMPANY: z.string().default("Moderavia"),
+  EMAIL_SIGNATURE_DOMAIN: z.string().default("moderavia.com"),
   ALERT_EMAIL: z.string().optional(),
   SMTP_TLS_SERVERNAME: z.string().optional(),
   TEST_NOTIFICATION_TOKEN: z.string().optional(),
@@ -60,11 +65,16 @@ let cached: AppConfig | undefined;
 export function loadConfig(overrides: Record<string, string | undefined> = {}): AppConfig {
   const parsed = envSchema.parse({ ...process.env, ...overrides });
   const telegramEnabled = Boolean(parsed.TELEGRAM_BOT_TOKEN && parsed.TELEGRAM_CHAT_ID);
-  const emailEnabled = Boolean(
-    parsed.SMTP_HOST && parsed.EMAIL_FROM && parsed.ALERT_EMAIL
-  );
+  const emailFrom = parsed.EMAIL_FROM?.trim();
+  const emailEnabled = Boolean(parsed.SMTP_HOST && emailFrom && parsed.ALERT_EMAIL);
   return {
     ...parsed,
+    EMAIL_FROM: emailFrom,
+    EMAIL_FROM_NAME: parsed.EMAIL_FROM_NAME.trim() || "Moderavia Monitoring",
+    EMAIL_REPLY_TO: parsed.EMAIL_REPLY_TO?.trim() || emailFrom,
+    EMAIL_SIGNATURE_NAME: parsed.EMAIL_SIGNATURE_NAME.trim(),
+    EMAIL_SIGNATURE_COMPANY: parsed.EMAIL_SIGNATURE_COMPANY.trim(),
+    EMAIL_SIGNATURE_DOMAIN: parsed.EMAIL_SIGNATURE_DOMAIN.trim() || "moderavia.com",
     commitSha:
       parsed.GIT_COMMIT_SHA ||
       parsed.RAILWAY_GIT_COMMIT_SHA ||

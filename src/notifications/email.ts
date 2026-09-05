@@ -3,7 +3,15 @@ import type { AppConfig } from "../config.js";
 import { resolveHostname } from "../net/dns.js";
 import { logger } from "../logger.js";
 import { describeError } from "../tls/errorInfo.js";
-import { buildEmailBody, buildEmailSubject, type NotificationChannel, type NotificationPayload } from "./types.js";
+import type { NotificationChannel, NotificationPayload } from "./types.js";
+import {
+  buildEmailHtml,
+  buildEmailSubject,
+  buildEmailText,
+  emailIdentityFromConfig,
+  formatFromHeader,
+  generateMessageId
+} from "./emailTemplate.js";
 
 export function createEmailChannel(config: AppConfig): NotificationChannel {
   return {
@@ -13,8 +21,9 @@ export function createEmailChannel(config: AppConfig): NotificationChannel {
       if (!config.emailEnabled || !config.SMTP_HOST || !config.EMAIL_FROM || !config.ALERT_EMAIL) {
         throw new Error("Email is not configured");
       }
+      const identity = emailIdentityFromConfig(config);
       const resolved = await resolveHostname(config.SMTP_HOST);
-      const tlsServername = (config.SMTP_TLS_SERVERNAME?.trim() || resolved.host);
+      const tlsServername = config.SMTP_TLS_SERVERNAME?.trim() || resolved.host;
       logger.info(
         {
           smtpHostConfiguredLength: config.SMTP_HOST.length,
@@ -33,6 +42,8 @@ export function createEmailChannel(config: AppConfig): NotificationChannel {
         port: config.SMTP_PORT,
         secure: config.SMTP_SECURE,
         family: 4,
+        disableFileAccess: true,
+        disableUrlAccess: true,
         auth: config.SMTP_USER
           ? {
               user: config.SMTP_USER,
@@ -45,12 +56,18 @@ export function createEmailChannel(config: AppConfig): NotificationChannel {
           minVersion: "TLSv1.2"
         }
       } as nodemailer.TransportOptions);
+      const sentAt = new Date();
       try {
         await transporter.sendMail({
-          from: config.EMAIL_FROM,
+          from: formatFromHeader(identity),
+          replyTo: identity.replyTo,
           to: config.ALERT_EMAIL,
+          date: sentAt,
+          messageId: generateMessageId(identity, sentAt),
           subject: buildEmailSubject(payload),
-          text: buildEmailBody(payload)
+          text: buildEmailText(payload, identity),
+          html: buildEmailHtml(payload, identity),
+          textEncoding: "quoted-printable"
         });
       } catch (error) {
         logger.error(

@@ -28,6 +28,7 @@ export function buildSimulatedOpenPayload(
     previousStatus: "Lukket",
     currentStatus: "Åben",
     detectedAtFormatted: formatTimestamp(detectedAt, config.TIMEZONE) ?? detectedAt.toISOString(),
+    detectedAt,
     simulated: true
   };
 }
@@ -49,6 +50,7 @@ export async function sendTestNotifications(
           monitorName: "monitor",
           targetUrl: FINDBOLIG_URL,
           detectedAtFormatted: formatTimestamp(new Date(), config.TIMEZONE) ?? new Date().toISOString(),
+          detectedAt: new Date(),
           extraLines: ["This is a delivery test. Findbolig state was not changed."],
           simulated: true
         };

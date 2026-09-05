@@ -13,4 +13,14 @@ describe("config defaults", () => {
     });
     expect(config.CHECK_INTERVAL_SECONDS).toBe(30);
   });
+
+  it("defaults email identity fields when unset", () => {
+    const config = loadConfig({
+      DATABASE_URL: "postgres://monitor:monitor@127.0.0.1:5432/monitor_test",
+      EMAIL_FROM_NAME: "",
+      EMAIL_SIGNATURE_DOMAIN: ""
+    });
+    expect(config.EMAIL_FROM_NAME).toBe("Moderavia Monitoring");
+    expect(config.EMAIL_SIGNATURE_DOMAIN).toBe("moderavia.com");
+  });
 });

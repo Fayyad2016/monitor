@@ -3,6 +3,7 @@ import pino from "pino";
 const SECRET_KEYS = [
   "TELEGRAM_BOT_TOKEN",
   "SMTP_PASSWORD",
+  "TEST_NOTIFICATION_TOKEN",
   "DATABASE_URL",
   "PGPASSWORD",
   "password",
@@ -46,11 +47,13 @@ export function createLogger(level = process.env.LOG_LEVEL ?? "info") {
       paths: [
         "TELEGRAM_BOT_TOKEN",
         "SMTP_PASSWORD",
+        "TEST_NOTIFICATION_TOKEN",
         "DATABASE_URL",
         "password",
         "token",
         "*.TELEGRAM_BOT_TOKEN",
         "*.SMTP_PASSWORD",
+        "*.TEST_NOTIFICATION_TOKEN",
         "*.DATABASE_URL"
       ],
       censor: "[redacted]"
