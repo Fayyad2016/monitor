@@ -28,11 +28,24 @@ export function formatTimestamp(date: Date | string | null | undefined, timezone
 }
 
 export function formatEmailTimestamp(date: Date | string, timezone = DEFAULT_TIMEZONE): string | null {
-  const zoned = toZoned(date, timezone)?.setLocale("en-GB");
+  const zoned = toZoned(date, timezone);
   if (!zoned) {
     return null;
   }
-  return zoned.toFormat("d MMM yyyy, HH:mm ZZZ");
+  const clock = zoned.setLocale("en-US").toFormat("d MMM yyyy, HH:mm");
+  return `${clock} ${emailZoneAbbreviation(zoned)}`;
+}
+
+function emailZoneAbbreviation(zoned: DateTime): string {
+  const named = zoned.offsetNameShort;
+  if (named && /^[A-Z]{2,5}$/.test(named)) {
+    return named;
+  }
+  if (zoned.zoneName === "Europe/Copenhagen") {
+    return zoned.isInDST ? "CEST" : "CET";
+  }
+  const offset = zoned.toFormat("ZZ");
+  return offset;
 }
 
 export function toIso(date: Date): string {
