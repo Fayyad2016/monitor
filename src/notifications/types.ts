@@ -1,4 +1,10 @@
-export type AlertEventType = "OPENED" | "CLOSED" | "CHANGED" | "OPERATIONAL_FAILURE" | "OPERATIONAL_RECOVERY";
+export type AlertEventType =
+  | "OPENED"
+  | "CLOSED"
+  | "CHANGED"
+  | "OPERATIONAL_FAILURE"
+  | "OPERATIONAL_RECOVERY"
+  | "TEST";
 
 export interface NotificationPayload {
   eventType: AlertEventType;
@@ -24,6 +30,15 @@ export function buildTelegramMessage(payload: NotificationPayload): string {
       "",
       `Monitor: ${payload.monitorName}`,
       `Target: ${payload.targetUrl}`,
+      `Detected: ${payload.detectedAtFormatted}`,
+      ...(payload.extraLines ?? [])
+    ].join("\n");
+  }
+  if (payload.eventType === "TEST") {
+    return [
+      "✅ MONITOR NOTIFICATION TEST",
+      "",
+      `Monitor: ${payload.monitorName}`,
       `Detected: ${payload.detectedAtFormatted}`,
       ...(payload.extraLines ?? [])
     ].join("\n");
@@ -71,6 +86,9 @@ export function buildEmailSubject(payload: NotificationPayload): string {
   if (payload.eventType === "OPERATIONAL_FAILURE") {
     return `⚠️ Monitor operational warning — ${payload.monitorName}`;
   }
+  if (payload.eventType === "TEST") {
+    return `Monitor notification test — ${payload.monitorName}`;
+  }
   if (payload.eventType === "OPERATIONAL_RECOVERY") {
     return `✅ Monitor recovered — ${payload.monitorName}`;
   }
@@ -84,7 +102,11 @@ export function buildEmailSubject(payload: NotificationPayload): string {
 }
 
 export function buildEmailBody(payload: NotificationPayload): string {
-  if (payload.eventType === "OPERATIONAL_FAILURE" || payload.eventType === "OPERATIONAL_RECOVERY") {
+  if (
+    payload.eventType === "OPERATIONAL_FAILURE" ||
+    payload.eventType === "OPERATIONAL_RECOVERY" ||
+    payload.eventType === "TEST"
+  ) {
     return [
       `Monitor: ${payload.monitorName}`,
       `Target URL: ${payload.targetUrl}`,

@@ -24,7 +24,7 @@ async function main(): Promise<void> {
   const monitors = loadMonitors(config);
   const channels = createNotificationChannels(config);
   const scheduler = new MonitorScheduler(pool, config, monitors, channels);
-  const server = createHttpServer(pool, config);
+  const server = createHttpServer(pool, config, channels);
 
   await scheduler.runCycle();
 

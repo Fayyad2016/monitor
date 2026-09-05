@@ -7,6 +7,7 @@ import {
   setOperationalAlert
 } from "../database/repositories.js";
 import { logger } from "../logger.js";
+import { describeError } from "../tls/errorInfo.js";
 import { formatTimestamp } from "../time.js";
 import type { NotificationChannel } from "../notifications/types.js";
 
@@ -36,20 +37,22 @@ export async function handleOperationalState(
       extraLines: ["The monitor completed a successful check after repeated failures."]
     };
     if (config.MONITOR_SEND_RECOVERY_ALERT) {
-      for (const channel of channels) {
-        if (!channel.enabled) {
-          continue;
-        }
-        try {
-          await channel.send(payload);
-          await markRecoverySent(pool, input.monitorName, channel.name, now);
-        } catch (error) {
-          logger.error(
-            { channel: channel.name, err: error instanceof Error ? error.message : error },
-            "Recovery notification failed"
-          );
-        }
-      }
+      await Promise.all(
+        channels.map(async (channel) => {
+          if (!channel.enabled) {
+            return;
+          }
+          try {
+            await channel.send(payload);
+            await markRecoverySent(pool, input.monitorName, channel.name, now);
+          } catch (error) {
+            logger.error(
+              { channel: channel.name, err: describeError(error) },
+              "Recovery notification failed"
+            );
+          }
+        })
+      );
     }
     await clearOperationalAlert(pool, input.monitorName, now);
     logger.info({ monitor: input.monitorName }, "Monitor recovered after repeated failures");
@@ -80,30 +83,32 @@ export async function handleOperationalState(
 
   let telegramOk = Boolean(input.operationalTelegramAt);
   let emailOk = Boolean(input.operationalEmailAt);
-  for (const channel of channels) {
-    if (!channel.enabled) {
-      continue;
-    }
-    if (channel.name === "telegram" && telegramOk) {
-      continue;
-    }
-    if (channel.name === "email" && emailOk) {
-      continue;
-    }
-    try {
-      await channel.send(payload);
-      if (channel.name === "telegram") {
-        telegramOk = true;
-      } else {
-        emailOk = true;
+  await Promise.all(
+    channels.map(async (channel) => {
+      if (!channel.enabled) {
+        return;
       }
-    } catch (error) {
-      logger.error(
-        { channel: channel.name, err: error instanceof Error ? error.message : error },
-        "Operational alert failed"
-      );
-    }
-  }
+      if (channel.name === "telegram" && telegramOk) {
+        return;
+      }
+      if (channel.name === "email" && emailOk) {
+        return;
+      }
+      try {
+        await channel.send(payload);
+        if (channel.name === "telegram") {
+          telegramOk = true;
+        } else {
+          emailOk = true;
+        }
+      } catch (error) {
+        logger.error(
+          { channel: channel.name, err: describeError(error) },
+          "Operational alert failed"
+        );
+      }
+    })
+  );
 
   const channel =
     telegramOk && emailOk ? "both" : telegramOk ? "telegram" : emailOk ? "email" : "none";

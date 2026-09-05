@@ -3,6 +3,7 @@ import type { AppConfig } from "../config.js";
 import { FetchError, ParseError } from "../errors.js";
 import { fetchHtml } from "../fetch/httpClient.js";
 import { logger } from "../logger.js";
+import { describeError, formatError } from "../tls/errorInfo.js";
 import {
   isClosedStatus,
   normalizeKey,
@@ -89,22 +90,39 @@ async function extractWithPlaywright(config: AppConfig): Promise<MonitorSnapshot
   let playwright: typeof import("playwright");
   try {
     playwright = await import("playwright");
-  } catch {
-    throw new FetchError("Playwright fallback requested but playwright is not installed", false);
+  } catch (error) {
+    throw new FetchError(
+      `Playwright fallback requested but playwright is not installed: ${formatError(error)}`,
+      false
+    );
   }
 
+  logger.info({ monitor: FINDBOLIG_MONITOR_NAME }, "Starting Playwright Chromium fallback");
   const browser = await playwright.chromium.launch({
-    headless: true
+    headless: true,
+    args: ["--disable-dev-shm-usage"]
   });
   try {
     const page = await browser.newPage({
-      userAgent: "Mozilla/5.0 (compatible; MonitorBot/1.0)"
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
     });
     page.setDefaultTimeout(config.REQUEST_TIMEOUT_MS);
-    await page.goto(FINDBOLIG_URL, { waitUntil: "domcontentloaded" });
-    await page.getByText(FINDBOLIG_SECTION_HEADING, { exact: false }).first().waitFor({ timeout: config.REQUEST_TIMEOUT_MS });
+    await page.goto(FINDBOLIG_URL, { waitUntil: "domcontentloaded", timeout: config.REQUEST_TIMEOUT_MS });
+    await page
+      .getByText(FINDBOLIG_SECTION_HEADING, { exact: false })
+      .first()
+      .waitFor({ timeout: config.REQUEST_TIMEOUT_MS });
     const html = await page.content();
     const parsed = extractFindboligWaitingList(html);
+    logger.info(
+      {
+        monitor: FINDBOLIG_MONITOR_NAME,
+        method: "playwright",
+        funds: parsed.entities.length
+      },
+      "Extracted Findbolig waiting-list rows via Playwright"
+    );
     return {
       monitorName: FINDBOLIG_MONITOR_NAME,
       targetUrl: FINDBOLIG_URL,
@@ -113,6 +131,8 @@ async function extractWithPlaywright(config: AppConfig): Promise<MonitorSnapshot
       evidenceHtml: parsed.evidenceHtml,
       parserMethod: "playwright"
     };
+  } catch (error) {
+    throw new FetchError(`Playwright fallback failed: ${formatError(error)}`, true);
   } finally {
     await browser.close();
   }
@@ -147,13 +167,33 @@ export function createFindboligMonitor(config: AppConfig): MonitorDefinition {
           evidenceHtml: parsed.evidenceHtml,
           parserMethod: "http"
         };
-      } catch (error) {
-        if (config.PLAYWRIGHT_FALLBACK) {
-          logger.warn({ err: error instanceof Error ? error.message : error }, "HTTP extract failed, trying Playwright fallback");
-          return extractWithPlaywright(config);
+      } catch (httpError) {
+        logger.warn(
+          {
+            monitor: FINDBOLIG_MONITOR_NAME,
+            playwrightFallback: config.PLAYWRIGHT_FALLBACK,
+            err: describeError(httpError)
+          },
+          "HTTP/Cheerio extract failed"
+        );
+        if (!config.PLAYWRIGHT_FALLBACK) {
+          throw httpError;
         }
-        throw error;
+        try {
+          return await extractWithPlaywright(config);
+        } catch (playwrightError) {
+          logger.error(
+            {
+              monitor: FINDBOLIG_MONITOR_NAME,
+              httpErr: describeError(httpError),
+              playwrightErr: describeError(playwrightError)
+            },
+            "Playwright fallback failed after HTTP extract failure"
+          );
+          throw playwrightError;
+        }
       }
     }
   };
 }
+

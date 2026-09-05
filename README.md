@@ -69,7 +69,10 @@ Copy names from `.env.example`. Do not put real secrets in git.
 | `TIMEZONE` | Default `Europe/Copenhagen` |
 | `MONITOR_FAILURE_ALERT_THRESHOLD` | Default `3` consecutive failures before an operational alert |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Primary alerts |
-| `SMTP_HOST` `SMTP_PORT` `SMTP_SECURE` `SMTP_USER` `SMTP_PASSWORD` `EMAIL_FROM` `ALERT_EMAIL` | Email alerts |
+| `SMTP_HOST` `SMTP_PORT` `SMTP_SECURE` `SMTP_TLS_SERVERNAME` `SMTP_USER` `SMTP_PASSWORD` `EMAIL_FROM` `ALERT_EMAIL` | Email. `SMTP_HOST` must be a bare hostname (no quotes, spaces, `smtp://`, or `:465`). |
+| `TEST_NOTIFICATION_TOKEN` | Protects `POST /test-notifications` |
+| `PLAYWRIGHT_FALLBACK` | Default `true`. Used when HTTP/Cheerio extraction fails |
+| `TLS_REJECT_UNAUTHORIZED` | Default `true`. Do not disable in production |
 
 Secrets (`TELEGRAM_BOT_TOKEN`, `SMTP_PASSWORD`, database credentials) are never printed by `/health`, `/status`, or structured logs.
 
@@ -85,13 +88,17 @@ Secrets (`TELEGRAM_BOT_TOKEN`, `SMTP_PASSWORD`, database credentials) are never 
    - `MONITOR_FAILURE_ALERT_THRESHOLD=3`
    - `TELEGRAM_BOT_TOKEN`
    - `TELEGRAM_CHAT_ID`
-   - `SMTP_HOST`
-   - `SMTP_PORT`
-   - `SMTP_SECURE`
+   - `SMTP_HOST` (bare hostname only, for example `server324-2.web-hosting.com`)
+   - `SMTP_PORT=465`
+   - `SMTP_SECURE=true`
+   - `SMTP_TLS_SERVERNAME` (optional; defaults to sanitized `SMTP_HOST`)
    - `SMTP_USER`
    - `SMTP_PASSWORD`
    - `EMAIL_FROM`
    - `ALERT_EMAIL`
+   - `TEST_NOTIFICATION_TOKEN`
+   - `PLAYWRIGHT_FALLBACK=true`
+   - `TLS_REJECT_UNAUTHORIZED=true`
 
    Railway provides `PORT` and `DATABASE_URL`. Do not hard-code them.
 
@@ -100,16 +107,15 @@ Secrets (`TELEGRAM_BOT_TOKEN`, `SMTP_PASSWORD`, database credentials) are never 
 
    - `GET https://<service>/health` → HTTP 200
    - `GET https://<service>/status` → monitor name, URL, fund statuses, last check, next check
-   - Telegram: send a test message from a throwaway chat, or wait for a real transition
-   - Email: send a test via your SMTP provider’s dashboard, or wait for a real transition
+   - Telegram/Email: `POST /test-notifications` with `Authorization: Bearer <TEST_NOTIFICATION_TOKEN>`
+     returns `{ "telegram": "sent"|"failed", "email": "sent"|"failed" }` without changing monitor state
 
 Migrations run on every boot and are idempotent (`CREATE TABLE IF NOT EXISTS` / `ON CONFLICT`).
 
 ## Reliability
 
-- HTTP parsing of the waiting-list table (Playwright fallback is optional via `PLAYWRIGHT_FALLBACK`)
-- Retries and request timeouts
-- Overlapping ticks are skipped
+- HTTP/Cheerio first, with the public RapidSSL intermediate added to the trust store so Findbolig’s incomplete chain still verifies
+- Playwright/Chromium fallback when HTTP retrieval or parsing fails (`PLAYWRIGHT_FALLBACK`, default true)
 - Parse/fetch failures never rewrite stored statuses
 - Operational warning after repeated failures, then a single recovery notice
 - Evidence HTML is stored on each recorded transition

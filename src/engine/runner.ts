@@ -9,6 +9,7 @@ import {
   upsertBaselineState
 } from "../database/repositories.js";
 import { logger } from "../logger.js";
+import { describeError, formatError } from "../tls/errorInfo.js";
 import type { MonitorDefinition } from "../monitors/types.js";
 import { dispatchPendingNotifications } from "../notifications/dispatcher.js";
 import type { NotificationChannel } from "../notifications/types.js";
@@ -154,8 +155,11 @@ export async function runMonitor(
       entityCount: snapshot.entities.length
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "unknown monitor error";
-    logger.error({ monitor: monitor.name, err: message }, "Monitor check failed; statuses were not changed");
+    const message = formatError(error);
+    logger.error(
+      { monitor: monitor.name, err: describeError(error) },
+      "Monitor check failed; statuses were not changed"
+    );
     const run = await recordMonitorFailure(pool, {
       monitorName: monitor.name,
       targetUrl: monitor.targetUrl,

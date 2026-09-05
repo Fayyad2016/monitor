@@ -1,9 +1,12 @@
 declare module "playwright" {
   export const chromium: {
-    launch(options?: { headless?: boolean }): Promise<{
+    launch(options?: {
+      headless?: boolean;
+      args?: string[];
+    }): Promise<{
       newPage(options?: { userAgent?: string }): Promise<{
         setDefaultTimeout(ms: number): void;
-        goto(url: string, options?: { waitUntil?: string }): Promise<unknown>;
+        goto(url: string, options?: { waitUntil?: string; timeout?: number }): Promise<unknown>;
         getByText(
           text: string,
           options?: { exact?: boolean }

@@ -8,6 +8,14 @@ vi.mock("nodemailer", () => ({
   }
 }));
 
+vi.mock("../src/net/dns.js", () => ({
+  resolveHostname: async () => ({
+    host: "smtp.test",
+    warnings: [],
+    addresses: [{ address: "127.0.0.1", family: 4 }]
+  })
+}));
+
 import { createEmailChannel } from "../src/notifications/email.js";
 import { testConfig } from "./helpers/testDb.js";
 

@@ -57,7 +57,7 @@ describe("health and status endpoints", () => {
     expect(JSON.stringify(status)).not.toContain("test-token");
     expect(JSON.stringify(status)).not.toContain("pass");
 
-    const server = createHttpServer(pool, config);
+    const server = createHttpServer(pool, config, recordingChannels().channels);
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const { port } = server.address() as AddressInfo;
     const healthRes = await fetch(`http://127.0.0.1:${port}/health`);
@@ -66,6 +66,17 @@ describe("health and status endpoints", () => {
     expect(statusRes.status).toBe(200);
     const healthBody = (await healthRes.json()) as { postgres: boolean };
     expect(healthBody.postgres).toBe(true);
+
+    const unauthorized = await fetch(`http://127.0.0.1:${port}/test-notifications`, { method: "POST" });
+    expect(unauthorized.status).toBe(401);
+    const testRes = await fetch(`http://127.0.0.1:${port}/test-notifications`, {
+      method: "POST",
+      headers: { Authorization: "Bearer test-notify-token" }
+    });
+    expect(testRes.status).toBe(200);
+    const testBody = (await testRes.json()) as { telegram: string; email: string };
+    expect(testBody).toEqual({ telegram: "sent", email: "sent" });
+    expect(JSON.stringify(testBody)).not.toContain("test-notify-token");
     server.close();
   });
 });

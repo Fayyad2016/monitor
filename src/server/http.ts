@@ -3,7 +3,10 @@ import { APP_VERSION, type AppConfig } from "../config.js";
 import { checkDatabase, type DbPool } from "../database/client.js";
 import { listAllStates, listMonitorRuns, listUnsentNotifications } from "../database/repositories.js";
 import { logger } from "../logger.js";
+import { describeError } from "../tls/errorInfo.js";
 import { formatTimestamp } from "../time.js";
+import type { NotificationChannel } from "../notifications/types.js";
+import { notificationTokenMatches, sendTestNotifications } from "../notifications/testSend.js";
 
 function json(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -82,7 +85,24 @@ export async function buildStatusPayload(pool: DbPool, config: AppConfig) {
   };
 }
 
-export function createHttpServer(pool: DbPool, config: AppConfig): Server {
+function readTestToken(req: IncomingMessage, url: URL): string | undefined {
+  const header = req.headers.authorization;
+  if (typeof header === "string" && header.toLowerCase().startsWith("bearer ")) {
+    return header.slice(7).trim();
+  }
+  const custom = req.headers["x-test-notification-token"];
+  if (typeof custom === "string") {
+    return custom;
+  }
+  const query = url.searchParams.get("token");
+  return query ?? undefined;
+}
+
+export function createHttpServer(
+  pool: DbPool,
+  config: AppConfig,
+  channels: NotificationChannel[] = []
+): Server {
   return createServer((req: IncomingMessage, res: ServerResponse) => {
     void (async () => {
       try {
@@ -96,9 +116,23 @@ export function createHttpServer(pool: DbPool, config: AppConfig): Server {
           json(res, 200, await buildStatusPayload(pool, config));
           return;
         }
+        if (req.method === "POST" && url.pathname === "/test-notifications") {
+          if (!config.TEST_NOTIFICATION_TOKEN) {
+            json(res, 404, { error: "not_found" });
+            return;
+          }
+          const provided = readTestToken(req, url);
+          if (!provided || !notificationTokenMatches(config.TEST_NOTIFICATION_TOKEN, provided)) {
+            json(res, 401, { error: "unauthorized" });
+            return;
+          }
+          const result = await sendTestNotifications(config, channels);
+          json(res, 200, result);
+          return;
+        }
         json(res, 404, { error: "not_found" });
       } catch (error) {
-        logger.error({ err: error instanceof Error ? error.message : error }, "HTTP handler failed");
+        logger.error({ err: describeError(error) }, "HTTP handler failed");
         json(res, 500, { error: "internal_error" });
       }
     })();

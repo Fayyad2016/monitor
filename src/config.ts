@@ -43,8 +43,10 @@ const envSchema = z.object({
   SMTP_PASSWORD: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
   ALERT_EMAIL: z.string().optional(),
+  SMTP_TLS_SERVERNAME: z.string().optional(),
+  TEST_NOTIFICATION_TOKEN: z.string().optional(),
   TLS_REJECT_UNAUTHORIZED: booleanFromEnv.default(true),
-  PLAYWRIGHT_FALLBACK: booleanFromEnv.default(false)
+  PLAYWRIGHT_FALLBACK: booleanFromEnv.default(true)
 });
 
 export type AppConfig = z.infer<typeof envSchema> & {

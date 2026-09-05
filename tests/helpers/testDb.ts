@@ -24,6 +24,8 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     SMTP_SECURE: false,
     TLS_REJECT_UNAUTHORIZED: true,
     PLAYWRIGHT_FALLBACK: false,
+    SMTP_TLS_SERVERNAME: undefined,
+    TEST_NOTIFICATION_TOKEN: "test-notify-token",
     commitSha: "testsha",
     telegramEnabled: true,
     emailEnabled: true,
