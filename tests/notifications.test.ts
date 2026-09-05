@@ -50,4 +50,13 @@ describe("notification templates and telegram sender", () => {
     expect(body.text).toContain("FINDBOLIG ALERT");
     vi.unstubAllGlobals();
   });
+
+  it("marks a simulated OPEN as TEST while using OPEN fields", () => {
+    const simulated = { ...opened, simulated: true as const };
+    const text = buildTelegramMessage(simulated);
+    expect(text.startsWith("🧪 TEST — NOT A REAL OPENING")).toBe(true);
+    expect(text).toContain("🚨 FINDBOLIG WAITING LIST OPEN");
+    expect(buildEmailSubject(simulated)).toBe("🧪 TEST — Findbolig OPEN — Fuglevænget");
+    expect(buildEmailBody(simulated)).toContain("TEST ONLY");
+  });
 });

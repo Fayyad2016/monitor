@@ -85,6 +85,35 @@ export async function buildStatusPayload(pool: DbPool, config: AppConfig) {
   };
 }
 
+function readJsonBody(req: IncomingMessage, limitBytes = 8192): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > limitBytes) {
+        reject(new Error("request_body_too_large"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      const raw = Buffer.concat(chunks).toString("utf8").trim();
+      if (!raw) {
+        resolve({});
+        return;
+      }
+      try {
+        resolve(JSON.parse(raw) as unknown);
+      } catch {
+        reject(new Error("invalid_json"));
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
 function readTestToken(req: IncomingMessage, url: URL): string | undefined {
   const header = req.headers.authorization;
   if (typeof header === "string" && header.toLowerCase().startsWith("bearer ")) {
@@ -126,8 +155,33 @@ export function createHttpServer(
             json(res, 401, { error: "unauthorized" });
             return;
           }
-          const result = await sendTestNotifications(config, channels);
-          json(res, 200, result);
+          let body: unknown = {};
+          try {
+            body = await readJsonBody(req);
+          } catch (error) {
+            json(res, error instanceof Error && error.message === "invalid_json" ? 400 : 413, {
+              error: error instanceof Error ? error.message : "bad_request"
+            });
+            return;
+          }
+          const request =
+            body && typeof body === "object"
+              ? {
+                  type: "type" in body && typeof body.type === "string" ? body.type : undefined,
+                  housingFund:
+                    "housingFund" in body && typeof body.housingFund === "string" ? body.housingFund : undefined
+                }
+              : {};
+          try {
+            const result = await sendTestNotifications(config, channels, request);
+            json(res, 200, result);
+          } catch (error) {
+            if (error instanceof Error && error.message.startsWith("Invalid ")) {
+              json(res, 400, { error: error.message });
+              return;
+            }
+            throw error;
+          }
           return;
         }
         json(res, 404, { error: "not_found" });

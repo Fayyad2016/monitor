@@ -15,6 +15,7 @@ export interface NotificationPayload {
   currentStatus?: string | null;
   detectedAtFormatted: string;
   extraLines?: string[];
+  simulated?: boolean;
 }
 
 export interface NotificationChannel {
@@ -61,7 +62,7 @@ export function buildTelegramMessage(payload: NotificationPayload): string {
         ? "Waiting list STATUS CHANGED"
         : "Waiting list OPENED";
 
-  return [
+  const production = [
     `🚨 ${payload.monitorName.toUpperCase()} ALERT`,
     "",
     headline,
@@ -80,9 +81,31 @@ export function buildTelegramMessage(payload: NotificationPayload): string {
     "",
     payload.targetUrl
   ].join("\n");
+
+  if (payload.simulated && payload.eventType === "OPENED") {
+    return [
+      "🧪 TEST — NOT A REAL OPENING",
+      "",
+      "🚨 FINDBOLIG WAITING LIST OPEN",
+      "",
+      `Housing fund: ${payload.housingFund ?? ""}`,
+      `Previous: ${payload.previousStatus && payload.previousStatus.length > 0 ? payload.previousStatus : "(none)"}`,
+      `Current: ${payload.currentStatus ?? ""}`,
+      `Detected: ${payload.detectedAtFormatted}`,
+      "",
+      payload.targetUrl,
+      "",
+      "⚠️ TEST ONLY — Findbolig did not actually change."
+    ].join("\n");
+  }
+
+  return production;
 }
 
 export function buildEmailSubject(payload: NotificationPayload): string {
+  if (payload.simulated && payload.eventType === "OPENED") {
+    return `🧪 TEST — Findbolig OPEN — ${payload.housingFund}`;
+  }
   if (payload.eventType === "OPERATIONAL_FAILURE") {
     return `⚠️ Monitor operational warning — ${payload.monitorName}`;
   }
@@ -102,6 +125,24 @@ export function buildEmailSubject(payload: NotificationPayload): string {
 }
 
 export function buildEmailBody(payload: NotificationPayload): string {
+  const productionOpen = [
+    `Housing fund: ${payload.housingFund ?? ""}`,
+    `Previous status: ${payload.previousStatus && payload.previousStatus.length > 0 ? payload.previousStatus : "(none)"}`,
+    `New status: ${payload.currentStatus ?? ""}`,
+    `Exact detection time: ${payload.detectedAtFormatted}`,
+    `Findbolig URL: ${payload.targetUrl}`
+  ].join("\n");
+
+  if (payload.simulated && payload.eventType === "OPENED") {
+    return [
+      "🧪 TEST — NOT A REAL OPENING",
+      "",
+      productionOpen,
+      "",
+      "⚠️ TEST ONLY — This is a simulation. Findbolig did not actually change. No production monitor state was modified."
+    ].join("\n");
+  }
+
   if (
     payload.eventType === "OPERATIONAL_FAILURE" ||
     payload.eventType === "OPERATIONAL_RECOVERY" ||
@@ -114,11 +155,5 @@ export function buildEmailBody(payload: NotificationPayload): string {
       ...(payload.extraLines ?? [])
     ].join("\n");
   }
-  return [
-    `Housing fund: ${payload.housingFund ?? ""}`,
-    `Previous status: ${payload.previousStatus && payload.previousStatus.length > 0 ? payload.previousStatus : "(none)"}`,
-    `New status: ${payload.currentStatus ?? ""}`,
-    `Exact detection time: ${payload.detectedAtFormatted}`,
-    `Findbolig URL: ${payload.targetUrl}`
-  ].join("\n");
+  return productionOpen;
 }

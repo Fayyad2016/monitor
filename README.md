@@ -70,7 +70,7 @@ Copy names from `.env.example`. Do not put real secrets in git.
 | `MONITOR_FAILURE_ALERT_THRESHOLD` | Default `3` consecutive failures before an operational alert |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Primary alerts |
 | `SMTP_HOST` `SMTP_PORT` `SMTP_SECURE` `SMTP_TLS_SERVERNAME` `SMTP_USER` `SMTP_PASSWORD` `EMAIL_FROM` `ALERT_EMAIL` | Email. `SMTP_HOST` must be a bare hostname (no quotes, spaces, `smtp://`, or `:465`). |
-| `TEST_NOTIFICATION_TOKEN` | Protects `POST /test-notifications` |
+| `TEST_NOTIFICATION_TOKEN` | Protects `POST /test-notifications`. Body `{ "type": "open", "housingFund": "Fuglevænget" }` sends a simulated OPEN using the production formatter (no DB writes). Omit `type` for a generic operational ping. |
 | `PLAYWRIGHT_FALLBACK` | Default `true`. Used when HTTP/Cheerio extraction fails |
 | `TLS_REJECT_UNAUTHORIZED` | Default `true`. Do not disable in production |
 

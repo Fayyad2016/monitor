@@ -1,7 +1,13 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { AppConfig } from "../config.js";
+import { FINDBOLIG_MONITOR_NAME, FINDBOLIG_URL } from "../monitors/findbolig.js";
 import { formatTimestamp } from "../time.js";
-import type { NotificationChannel } from "./types.js";
+import type { NotificationChannel, NotificationPayload } from "./types.js";
+
+export interface TestNotificationRequest {
+  type?: string;
+  housingFund?: string;
+}
 
 export function notificationTokenMatches(expected: string, provided: string): boolean {
   const left = createHash("sha256").update(expected).digest();
@@ -9,17 +15,44 @@ export function notificationTokenMatches(expected: string, provided: string): bo
   return timingSafeEqual(left, right);
 }
 
+export function buildSimulatedOpenPayload(
+  config: AppConfig,
+  housingFund: string,
+  detectedAt = new Date()
+): NotificationPayload {
+  return {
+    eventType: "OPENED",
+    monitorName: FINDBOLIG_MONITOR_NAME,
+    targetUrl: FINDBOLIG_URL,
+    housingFund,
+    previousStatus: "Lukket",
+    currentStatus: "Åben",
+    detectedAtFormatted: formatTimestamp(detectedAt, config.TIMEZONE) ?? detectedAt.toISOString(),
+    simulated: true
+  };
+}
+
 export async function sendTestNotifications(
   config: AppConfig,
-  channels: NotificationChannel[]
+  channels: NotificationChannel[],
+  request: TestNotificationRequest = {}
 ): Promise<{ telegram: "sent" | "failed"; email: "sent" | "failed" }> {
-  const payload = {
-    eventType: "TEST" as const,
-    monitorName: "monitor",
-    targetUrl: "https://www.findbolig.nu/da-dk/udlejere",
-    detectedAtFormatted: formatTimestamp(new Date(), config.TIMEZONE) ?? new Date().toISOString(),
-    extraLines: ["This is a delivery test. Findbolig state was not changed."]
-  };
+  const type = request.type?.trim().toLowerCase() || "delivery";
+  if (type !== "open" && type !== "delivery" && type !== "test") {
+    throw new Error("Invalid type");
+  }
+  const payload: NotificationPayload =
+    type === "open"
+      ? buildSimulatedOpenPayload(config, (request.housingFund ?? "Fuglevænget").trim() || "Fuglevænget")
+      : {
+          eventType: "TEST",
+          monitorName: "monitor",
+          targetUrl: FINDBOLIG_URL,
+          detectedAtFormatted: formatTimestamp(new Date(), config.TIMEZONE) ?? new Date().toISOString(),
+          extraLines: ["This is a delivery test. Findbolig state was not changed."],
+          simulated: true
+        };
+
   const result: { telegram: "sent" | "failed"; email: "sent" | "failed" } = {
     telegram: "failed",
     email: "failed"
