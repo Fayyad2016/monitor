@@ -97,6 +97,14 @@ export async function runMonitor(
       client.release();
     }
 
+    if (transitions.length > 0) {
+      logger.info(
+        { monitor: monitor.name, transitions: transitions.length },
+        "State transition detected; sending Telegram and Email immediately"
+      );
+      await dispatchPendingNotifications(pool, config, channels);
+    }
+
     const run = await recordMonitorSuccess(pool, {
       monitorName: monitor.name,
       targetUrl: monitor.targetUrl,

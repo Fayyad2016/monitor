@@ -17,9 +17,9 @@ afterAll(async () => {
 
 describe("health and status endpoints", () => {
   it("requires a recent successful check for /health 200", () => {
-    expect(isHealthFresh(null, 180)).toBe(false);
-    expect(isHealthFresh(new Date(), 180)).toBe(true);
-    expect(isHealthFresh(new Date(Date.now() - 181_000), 180)).toBe(false);
+    expect(isHealthFresh(null, 90)).toBe(false);
+    expect(isHealthFresh(new Date(), 90)).toBe(true);
+    expect(isHealthFresh(new Date(Date.now() - 91_000), 90)).toBe(false);
   });
 
   it("serves /health and /status after a successful monitor run", async () => {
@@ -43,7 +43,7 @@ describe("health and status endpoints", () => {
         }
       },
       channels,
-      new Date(Date.now() + 60_000)
+      new Date(Date.now() + 30_000)
     );
 
     const config = testConfig();
@@ -51,6 +51,7 @@ describe("health and status endpoints", () => {
     expect(health.status).toBe("ok");
     expect(health.postgres).toBe(true);
     const status = await buildStatusPayload(pool, config);
+    expect(status.intervalSeconds).toBe(30);
     expect(status.monitors[0]?.name).toBe("findbolig");
     expect(status.monitors[0]?.currentHousingFundStatuses[0]?.housingFund).toBe("Arendal");
     expect(JSON.stringify(status)).not.toContain("test-token");

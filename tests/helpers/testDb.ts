@@ -10,7 +10,7 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
   return {
     NODE_ENV: "test",
     PORT: 3456,
-    CHECK_INTERVAL_SECONDS: 60,
+    CHECK_INTERVAL_SECONDS: 30,
     TIMEZONE: "Europe/Copenhagen",
     DATABASE_URL: TEST_DATABASE_URL,
     MONITOR_FAILURE_ALERT_THRESHOLD: 3,

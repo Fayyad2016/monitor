@@ -16,7 +16,10 @@ async function main(): Promise<void> {
 
   const pool = createPool(config);
   await runMigrations(pool);
-  logger.info({ timezone: config.TIMEZONE }, "Database migrations applied");
+  logger.info(
+    { timezone: config.TIMEZONE, checkIntervalSeconds: config.CHECK_INTERVAL_SECONDS },
+    "Database migrations applied"
+  );
 
   const monitors = loadMonitors(config);
   const channels = createNotificationChannels(config);

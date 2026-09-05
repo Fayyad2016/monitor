@@ -37,52 +37,54 @@ export async function dispatchPendingNotifications(
   const pending = await listUnsentNotifications(pool);
   for (const row of pending) {
     const payload = toPayload(row, config.TIMEZONE);
-    for (const channel of channels) {
-      const alreadySent = channel.name === "telegram" ? row.telegram_sent_at : row.email_sent_at;
-      if (alreadySent) {
-        continue;
-      }
-      if (!channel.enabled) {
-        await markNotificationAttemptError(pool, row.id, `${channel.name} is not configured`, new Date());
-        continue;
-      }
-      try {
-        await channel.send(payload);
-        const at = new Date();
-        await markNotificationChannelSent(pool, row.id, channel.name, at);
-        await markChannelNotified(pool, {
-          monitorName: row.monitor_name,
-          housingFundKey: row.housing_fund_key,
-          channel: channel.name,
-          at
-        });
-        if (channel.name === "telegram") {
-          row.telegram_sent_at = at;
-        } else {
-          row.email_sent_at = at;
+    await Promise.all(
+      channels.map(async (channel) => {
+        const alreadySent = channel.name === "telegram" ? row.telegram_sent_at : row.email_sent_at;
+        if (alreadySent) {
+          return;
         }
-        logger.info(
-          {
-            monitor: row.monitor_name,
-            fund: row.housing_fund,
-            eventType: row.event_type,
-            channel: channel.name
-          },
-          "Notification sent"
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "unknown notification error";
-        await markNotificationAttemptError(pool, row.id, `${channel.name}: ${message}`, new Date());
-        logger.error(
-          {
-            monitor: row.monitor_name,
-            fund: row.housing_fund,
+        if (!channel.enabled) {
+          await markNotificationAttemptError(pool, row.id, `${channel.name} is not configured`, new Date());
+          return;
+        }
+        try {
+          await channel.send(payload);
+          const at = new Date();
+          await markNotificationChannelSent(pool, row.id, channel.name, at);
+          await markChannelNotified(pool, {
+            monitorName: row.monitor_name,
+            housingFundKey: row.housing_fund_key,
             channel: channel.name,
-            err: message
-          },
-          "Notification channel failed; will retry without duplicating the other channel"
-        );
-      }
-    }
+            at
+          });
+          if (channel.name === "telegram") {
+            row.telegram_sent_at = at;
+          } else {
+            row.email_sent_at = at;
+          }
+          logger.info(
+            {
+              monitor: row.monitor_name,
+              fund: row.housing_fund,
+              eventType: row.event_type,
+              channel: channel.name
+            },
+            "Notification sent"
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "unknown notification error";
+          await markNotificationAttemptError(pool, row.id, `${channel.name}: ${message}`, new Date());
+          logger.error(
+            {
+              monitor: row.monitor_name,
+              fund: row.housing_fund,
+              channel: channel.name,
+              err: message
+            },
+            "Notification channel failed; will retry without duplicating the other channel"
+          );
+        }
+      })
+    );
   }
 }

@@ -28,7 +28,7 @@ function fakeMonitor(entities: MonitorSnapshot["entities"], failTimes = { left: 
   };
 }
 
-const nextCheck = () => new Date(Date.now() + 60_000);
+const nextCheck = () => new Date(Date.now() + 30_000);
 
 beforeEach(async () => {
   await pool.query("TRUNCATE pending_notifications, housing_fund_history, housing_fund_states, monitor_runs RESTART IDENTITY CASCADE");
@@ -72,6 +72,32 @@ describe("monitor runner", () => {
     expect(openEvents.map((item) => item.channel).sort()).toEqual(["email", "telegram"]);
     expect(sent.some((item) => item.payload.eventType === "OPENED" && item.channel === "telegram")).toBe(true);
     expect(sent.some((item) => item.payload.eventType === "OPENED" && item.channel === "email")).toBe(true);
+  });
+
+  it("sends Telegram and Email in the same check as the Lukket to open transition", async () => {
+    const { sent, channels } = recordingChannels();
+    await runMonitor(
+      pool,
+      testConfig(),
+      fakeMonitor([{ key: "fuglevænget", displayName: "Fuglevænget", status: "Lukket" }]),
+      channels,
+      nextCheck()
+    );
+    const result = await runMonitor(
+      pool,
+      testConfig(),
+      fakeMonitor([{ key: "fuglevænget", displayName: "Fuglevænget", status: "Åben" }]),
+      channels,
+      nextCheck()
+    );
+    expect(result.ok).toBe(true);
+    expect(result.transitions).toEqual([
+      expect.objectContaining({ eventType: "OPENED", fund: "Fuglevænget", previous: "Lukket", current: "Åben" })
+    ]);
+    expect(sent.filter((item) => item.payload.eventType === "OPENED").map((item) => item.channel).sort()).toEqual([
+      "email",
+      "telegram"
+    ]);
   });
 
   it("stores CLOSED history and notifies once when a list closes again", async () => {

@@ -4,12 +4,14 @@ Production-ready website monitoring service. Monitors are independent modules un
 
 ## What it does
 
-- Checks [Findbolig udlejere](https://www.findbolig.nu/da-dk/udlejere) every 60 seconds
+- Checks [Findbolig udlejere](https://www.findbolig.nu/da-dk/udlejere) every **30 seconds** by default (`CHECK_INTERVAL_SECONDS`)
 - Extracts every row from **Status for eksterne ventelister** (not generic HTML diffs)
 - Automatically picks up new housing funds when Findbolig adds rows
 - Persists state in PostgreSQL so Railway restarts do not send duplicate alerts
 - Alerts on real status transitions only (after a stored baseline exists)
+- On Lukket → open/non-closed, sends **Telegram and Email immediately** in the same check (does not wait for the next cycle)
 - Sends **Telegram** (primary) and **Email** (secondary) independently, with per-channel retry
+- Never overlaps checks: if a run exceeds 30 seconds, the next run starts only after it finishes
 - Exposes `GET /health` and `GET /status`
 
 Normal waiting-list status is usually `Lukket`. A critical event is any change from closed to another value (`Åben`, `Åbent`, `Open`, `Tilmelding åben`, or any other non-closed value). When a list later returns to `Lukket`, one CLOSED Telegram message and one CLOSED email are sent.
@@ -22,7 +24,7 @@ src/
   notifications/           # telegram.ts, email.ts
   database/                # PostgreSQL + repeatable migrations
   engine/                  # comparison, runner, operational alerts
-  scheduler/               # 60s cadence, overlap lock, graceful stop
+  scheduler/               # 30s cadence, overlap lock, graceful stop
   server/                  # /health and /status
 ```
 
@@ -63,7 +65,7 @@ Copy names from `.env.example`. Do not put real secrets in git.
 | --- | --- |
 | `PORT` | HTTP port (Railway sets this automatically) |
 | `DATABASE_URL` | PostgreSQL connection string |
-| `CHECK_INTERVAL_SECONDS` | Default `60` |
+| `CHECK_INTERVAL_SECONDS` | Default `30` (production) |
 | `TIMEZONE` | Default `Europe/Copenhagen` |
 | `MONITOR_FAILURE_ALERT_THRESHOLD` | Default `3` consecutive failures before an operational alert |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Primary alerts |
@@ -78,7 +80,7 @@ Secrets (`TELEGRAM_BOT_TOKEN`, `SMTP_PASSWORD`, database credentials) are never 
 3. Deploy this repo as a web service using the included `Dockerfile` / `railway.json`.
 4. In the service **Variables**, set:
 
-   - `CHECK_INTERVAL_SECONDS=60`
+   - `CHECK_INTERVAL_SECONDS=30`
    - `TIMEZONE=Europe/Copenhagen`
    - `MONITOR_FAILURE_ALERT_THRESHOLD=3`
    - `TELEGRAM_BOT_TOKEN`

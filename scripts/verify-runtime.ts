@@ -36,7 +36,7 @@ async function main(): Promise<void> {
       }
     },
     channels,
-    new Date(Date.now() + 60_000)
+    new Date(Date.now() + 30_000)
   );
 
   const server = createHttpServer(pool, config);
